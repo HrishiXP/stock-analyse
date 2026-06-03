@@ -1,7 +1,13 @@
-export { default } from 'next-auth/middleware';
+import { withAuth } from 'next-auth/middleware';
+
+export default withAuth({
+  secret: process.env.NEXTAUTH_SECRET,
+  pages: {
+    signIn: '/login',
+  },
+});
 
 export const config = {
-  // Routes to protect
   matcher: [
     '/dashboard/:path*',
     '/analysis/:path*',
