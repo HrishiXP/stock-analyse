@@ -344,7 +344,8 @@ export async function* generateStreamingSignal(symbol: string, news: NewsItem[])
         // @ts-ignore
         if (streamResult?.stream?.return) {
           // try to gracefully end the async iterator
-          streamResult.stream.return();
+          // @ts-ignore
+          streamResult.stream.return(null);
         }
       }
     } catch {}
