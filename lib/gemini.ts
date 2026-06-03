@@ -16,7 +16,9 @@ Analyze news with institutional-grade rigor. Perform a multi-factor analysis:
 4. Strategic Fit (Best option strategy for the current regime)
 Be concise, factual, and return STRICT JSON. Put any clarifying assumptions into the 'notes' array.`;
 
-const API_VERSION = 'v1beta';
+export const API_VERSION = 'v1beta';
+export const FLASH_MODEL = 'gemini-3.5-flash';
+export const PRO_MODEL = 'gemini-2.5-pro';
 
 export async function* generateStreamingSignal(symbol: string, news: NewsItem[]) {
   const metadata = NSE_FO_DATA[symbol] || { sector: 'Unknown', lotSize: 0 };
@@ -25,7 +27,7 @@ export async function* generateStreamingSignal(symbol: string, news: NewsItem[])
   const day = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Kolkata' });
   const prompt = buildSignalPrompt(symbol, sector, 'UNKNOWN', day, news, metadata.lotSize);
   
-  const model = getModel('gemini-2.0-pro-exp-02-05');
+  const model = getModel(PRO_MODEL);
   const result = await model.generateContentStream(`${SYSTEM_PREFIX}\n\n${prompt}`);
   for await (const chunk of result.stream) {
     const chunkText = chunk.text();
@@ -39,8 +41,9 @@ function getClient() {
   return new GoogleGenerativeAI(apiKey);
 }
 
-function getModel(modelName: string) {
+export function getModel(modelName: string) {
   const client = getClient();
+  console.log(`[Gemini] Model: ${modelName} | API: ${API_VERSION}`);
   return client.getGenerativeModel({ model: modelName }, { apiVersion: API_VERSION });
 }
 
@@ -120,7 +123,7 @@ Return STRICT JSON. No markdown. No headers.`;
 }
 
 export async function batchFlashSentiment(items: NewsItem[]) {
-  const model = getModel('gemini-2.0-flash-exp');
+  const model = getModel(FLASH_MODEL);
   const batches: NewsItem[][] = [];
   for (let i = 0; i < items.length; i += 10) {
     batches.push(items.slice(i, i + 10));
@@ -141,7 +144,7 @@ export async function batchFlashSentiment(items: NewsItem[]) {
 }
 
 export async function generateMarketMoodSummary(allNews: NewsItem[]): Promise<MarketMood> {
-  const model = getModel('gemini-2.0-flash-exp');
+  const model = getModel(FLASH_MODEL);
   const text = allNews.slice(0, 20).map((item) => `${item.sourceShort}: ${item.title}`).join('\n');
   const prompt = `Summarize the overall market mood for India F&O from these headlines in one sentence. Return JSON only: {"overall":"VERY_BULLISH|BULLISH|NEUTRAL|BEARISH|VERY_BEARISH","score":number,"summary":"string","top_drivers":["..."],"news_count":number}\n${text}`;
   const response = await model.generateContent(prompt);
@@ -167,7 +170,7 @@ export async function generateFOSignal(symbol: string, news: NewsItem[]): Promis
   const marketStatus = 'UNKNOWN';
   const day = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Kolkata' });
   const prompt = buildSignalPrompt(symbol, sector, marketStatus, day, news, metadata.lotSize);
-  const model = getModel('gemini-2.0-pro-exp-02-05');
+  const model = getModel(PRO_MODEL);
   const response = await model.generateContent(`${SYSTEM_PREFIX}\n\n${prompt}`);
   const raw = response.response.text();
   // robust parse and post-processing
@@ -271,7 +274,7 @@ export function postProcessParsedSignal(parsed: any, symbol: string, news: NewsI
     disclaimer: 'AI-generated. Internal desk use only. Not SEBI advice.',
     generated_at: now,
     news_count_used: news.length,
-    model_used: 'gemini-2.0-pro-exp-02-05',
+    model_used: PRO_MODEL,
   };
 
   return safe;
@@ -335,7 +338,7 @@ function buildFallbackSignal(symbol: string, news: NewsItem[], sector: string): 
 }
 
 export async function generateBatchQuickSignals(symbols: string[]): Promise<QuickSignal[]> {
-  const model = getModel('gemini-2.0-flash-exp');
+  const model = getModel(FLASH_MODEL);
   const batches: string[][] = [];
   for (let i = 0; i < symbols.length; i += 9) {
     batches.push(symbols.slice(i, i + 9));
@@ -368,3 +371,4 @@ export async function generateBatchQuickSignals(symbols: string[]): Promise<Quic
   }
   return results;
 }
+

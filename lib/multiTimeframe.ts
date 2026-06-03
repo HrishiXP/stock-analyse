@@ -1,14 +1,12 @@
 import 'server-only';
 import { NewsItem, MultiTimeframeSignal, QuickSignal } from '../types/signal';
-import { GoogleGenerativeAI } from '@google/generative-ai';
 import { FNO_SYMBOLS } from './nseSymbols';
-
-const client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY ?? '');
+import { FLASH_MODEL, getModel } from './gemini';
 
 async function analyzeLens(symbol: string, news: NewsItem[], label: string, lens: string): Promise<QuickSignal> {
   const prompt = `Analyze ${symbol} for ${lens} F&O trading based on recent news. Return JSON only: {"symbol":"${symbol}","signal":"BUY_CALL|BUY_PUT|SELL_CALL|SELL_PUT|BULL_SPREAD|BEAR_SPREAD|STRADDLE|NEUTRAL|AVOID","confidence":0,"one_liner":""}`;
   try {
-    const model = client.getGenerativeModel({ model: 'gemini-2.0-flash-exp' }, { apiVersion: 'v1beta' });
+    const model = getModel(FLASH_MODEL);
     const response = await model.generateContent(prompt);
     const raw = response.response.text();
     const parsed = JSON.parse(raw.replace(/^[^\{]*/, '')) as QuickSignal;
