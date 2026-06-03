@@ -46,6 +46,16 @@ export default function DashboardPage() {
     setSelectedSymbol: state.setSelectedSymbol,
   }));
 
+  useEffect(() => {
+    if (isClient && !sessionStorage.getItem('risk_ack')) {
+      setShowDisclaimer(true);
+    }
+  }, [isClient]);
+
+  useEffect(() => {
+    setAppSelectedSymbol(selectedSymbol);
+  }, [selectedSymbol, setAppSelectedSymbol]);
+
   if (status === 'loading' || !isClient) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-emerald-500">
@@ -58,16 +68,6 @@ export default function DashboardPage() {
   }
 
   if (!session) return null;
-
-  useEffect(() => {
-    if (isClient && !sessionStorage.getItem('risk_ack')) {
-      setShowDisclaimer(true);
-    }
-  }, [isClient]);
-
-  useEffect(() => {
-    setAppSelectedSymbol(selectedSymbol);
-  }, [selectedSymbol, setAppSelectedSymbol]);
 
   const handleSelect = (symbol: string) => {
     setSelectedSymbol(symbol);
