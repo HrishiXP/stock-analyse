@@ -86,11 +86,11 @@ export async function GET(req: Request) {
       };
       const heartbeat = setInterval(() => {
         try {
-          safeEnqueue(encoder.encode(': heartbeat\n\n'));
+          safeEnqueue(encoder.encode(encodeEvent({ type: 'heartbeat', ts: Date.now() })));
         } catch {
           // ignore if controller closed
         }
-      }, 15000);
+      }, 10000);
       try {
         console.log(`[SSE] start stream for ${symbol} (refresh=${refresh})`);
         const news = await aggregateNews(symbol);

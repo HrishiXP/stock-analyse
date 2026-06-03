@@ -33,6 +33,7 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
   const lastActivityRef = useRef<number>(Date.now());
   const completedRef = useRef(false);
   const intentionalCloseRef = useRef(false);
+  const introSeenRef = useRef(false);
 
   const clearTimers = () => {
     if (idleTimerRef.current) {
@@ -79,6 +80,7 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
     attemptsRef.current = 0;
     completedRef.current = false;
     intentionalCloseRef.current = false;
+    introSeenRef.current = false;
 
     const connect = () => {
       attemptsRef.current += 1;
@@ -108,7 +110,16 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
         try {
           const payload = JSON.parse(event.data);
           if (payload.type === 'token') {
+            const content = String(payload.content ?? '');
+            const isIntro = content.startsWith('Streaming analysis for');
+            if (isIntro && introSeenRef.current) {
+              return;
+            }
+            if (isIntro) introSeenRef.current = true;
             setStreamingText((prev) => prev + payload.content);
+          }
+          if (payload.type === 'heartbeat') {
+            resetIdle();
           }
           if (payload.type === 'news') {
             setNews(payload.items);
@@ -172,7 +183,7 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
           clearTimers();
           return;
         }
-        if (idle > 30000) {
+        if (idle > 90000) {
           closeCurrentStream();
           setConnectionState('connecting');
           if (attemptsRef.current < 5) {
