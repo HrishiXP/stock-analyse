@@ -15,9 +15,14 @@ export const authOptions: NextAuthOptions = {
         const systemUser = process.env.AUTH_USERNAME?.trim();
         const systemPass = process.env.AUTH_PASSWORD?.trim();
 
+        if (!systemUser || !systemPass) {
+          console.error('CRITICAL: AUTH_USERNAME or AUTH_PASSWORD not set in environment variables');
+          return null;
+        }
+
         if (
           credentials.username.trim() === systemUser &&
-          credentials.password === systemPass
+          credentials.password.trim() === systemPass
         ) {
           return {
             id: '1',
