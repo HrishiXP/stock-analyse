@@ -22,7 +22,12 @@ const disclaimerText = `RISK WARNING: NSE-FO-Radar generates AI-powered analysis
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
   const [selectedSymbol, setSelectedSymbol] = useState('NIFTY');
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -41,12 +46,12 @@ export default function DashboardPage() {
     setSelectedSymbol: state.setSelectedSymbol,
   }));
 
-  if (status === 'loading') {
+  if (status === 'loading' || !isClient) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-slate-950 text-emerald-500">
         <div className="flex flex-col items-center gap-4">
           <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500/20 border-t-emerald-500"></div>
-          <span className="text-sm font-medium uppercase tracking-[0.2em]">Authenticating Terminal...</span>
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">Initializing Institutional Terminal...</span>
         </div>
       </div>
     );
@@ -55,10 +60,10 @@ export default function DashboardPage() {
   if (!session) return null;
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && !sessionStorage.getItem('risk_ack')) {
+    if (isClient && !sessionStorage.getItem('risk_ack')) {
       setShowDisclaimer(true);
     }
-  }, []);
+  }, [isClient]);
 
   useEffect(() => {
     setAppSelectedSymbol(selectedSymbol);
