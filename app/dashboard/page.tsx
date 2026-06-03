@@ -55,7 +55,7 @@ export default function DashboardPage() {
   if (!session) return null;
 
   useEffect(() => {
-    if (!sessionStorage.getItem('risk_ack')) {
+    if (typeof window !== 'undefined' && !sessionStorage.getItem('risk_ack')) {
       setShowDisclaimer(true);
     }
   }, []);
