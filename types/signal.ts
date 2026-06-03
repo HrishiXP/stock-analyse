@@ -17,6 +17,7 @@ export interface FOSignal {
   signal: 'BUY_CALL'|'BUY_PUT'|'SELL_CALL'|'SELL_PUT'|'BULL_SPREAD'|'BEAR_SPREAD'|'STRADDLE'|'NEUTRAL'|'AVOID';
   confidence: number;
   conviction: 'HIGH'|'MEDIUM'|'LOW';
+  thesis_strength?: 'STRONG'|'MODERATE'|'WEAK';
   timeframe: string;
   entry_range: { min: number; max: number };
   target_1: number;
@@ -57,6 +58,16 @@ export interface FOSignal {
   position_sizing: string;
   strategy_rationale?: string;
   direct_buy_alternative?: string;
+  setup_quality?: string;
+  entry_trigger?: string;
+  confirmation_signals?: string[];
+  execution_checklist?: string[];
+  invalidation_rule?: string;
+  what_changes_my_mind?: string;
+  hedge_plan?: string;
+  liquidity_note?: string;
+  price_structure?: string;
+  event_watchlist?: string[];
   analytics?: {
     momentum: number;
     volatility: number;

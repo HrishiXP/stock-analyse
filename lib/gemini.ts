@@ -14,7 +14,9 @@ Analyze news with institutional-grade rigor. Perform a multi-factor analysis:
 2. Quantitative Context (VIX view, expected volatility range)
 3. Institutional Sentiment (FII/DII potential bias from headlines)
 4. Strategic Fit (Best option strategy for the current regime)
-Be concise, factual, and return STRICT JSON. Put any clarifying assumptions into the 'notes' array.`;
+5. Execution Quality (entry trigger, invalidation, confirmation checklist, liquidity fit)
+Use explicit assumptions when the news is incomplete. Prefer specific, falsifiable reasoning over generic commentary.
+Return STRICT JSON only. Put any clarifying assumptions into the 'notes' array.`;
 
 export const API_VERSION = 'v1beta';
 export const FLASH_MODEL = 'gemini-3.5-flash';
@@ -62,6 +64,7 @@ function buildSignalPrompt(symbol: string, sector: string, marketStatus: string,
   "signal": "BUY_CALL|BUY_PUT|SELL_CALL|SELL_PUT|BULL_SPREAD|BEAR_SPREAD|STRADDLE|IRON_CONDOR|BUTTERFLY|NEUTRAL|AVOID",
   "confidence": "number (0-100)",
   "conviction": "HIGH|MEDIUM|LOW",
+  "thesis_strength": "STRONG|MODERATE|WEAK",
   "timeframe": "string",
   "rationale_summary": "string",
   "one_liner": "string",
@@ -106,6 +109,16 @@ function buildSignalPrompt(symbol: string, sector: string, marketStatus: string,
   "position_sizing": "string",
   "strategy_rationale": "Explain why a spread or direct buy was chosen (e.g., 'Selling hedge to offset theta')",
   "direct_buy_alternative": "The single most important CALL or PUT to buy if the user wants to avoid multi-legs/selling.",
+  "setup_quality": "string",
+  "price_structure": "string",
+  "entry_trigger": "string",
+  "confirmation_signals": ["string"],
+  "execution_checklist": ["string"],
+  "invalidation_rule": "string",
+  "what_changes_my_mind": "string",
+  "hedge_plan": "string",
+  "liquidity_note": "string",
+  "event_watchlist": ["string"],
   "notes": []
 }`;
 
@@ -119,6 +132,8 @@ function buildSignalPrompt(symbol: string, sector: string, marketStatus: string,
 7. Explain clearly in "strategy_rationale" why a certain strike/type was chosen.
 8. ALWAYS specify the exact Strike Price with suffix (e.g., '24000 CE' or '23800 PE') in "suggested_strike".
 9. If suggesting a spread, ensure the "direct_buy_alternative" contains only the primary LONG leg (e.g., 'Buy 24000 CE').
+10. Fill execution-grade fields: setup_quality, price_structure, entry_trigger, confirmation_signals, execution_checklist, invalidation_rule, what_changes_my_mind, hedge_plan, liquidity_note, event_watchlist.
+11. Make execution_checklist operational, concise, and immediately usable by a discretionary trader.
 Return STRICT JSON. No markdown. No headers.`;
 }
 
@@ -214,6 +229,7 @@ export function postProcessParsedSignal(parsed: any, symbol: string, news: NewsI
     signal: parsed.signal ?? 'NEUTRAL',
     confidence: confidence,
     conviction: parsed.conviction ?? 'LOW',
+    thesis_strength: parsed.thesis_strength ?? 'MODERATE',
     timeframe: parsed.timeframe ?? 'INTRADAY',
     entry_range: parsed.entry_range ?? { min: 0, max: 0 },
     target_1: targets[0] ?? 0,
@@ -261,6 +277,16 @@ export function postProcessParsedSignal(parsed: any, symbol: string, news: NewsI
     event_risk: parsed.event_risk ?? { has_event: false, event: '', date: '', impact: '' },
     holding_till: parsed.holding_till ?? 'Next major expiry or trend reversal.',
     position_sizing: parsed.position_sizing_rule ?? parsed.position_sizing ?? 'Conservative 2-3% risk per lot.',
+    setup_quality: parsed.setup_quality ?? 'Setup quality is neutral with incomplete market-structure confirmation.',
+    price_structure: parsed.price_structure ?? parsed.technical_context ?? 'Price structure remains headline-derived rather than tape-confirmed.',
+    entry_trigger: parsed.entry_trigger ?? 'Wait for price confirmation near the suggested strike before entry.',
+    confirmation_signals: parsed.confirmation_signals ?? [],
+    execution_checklist: parsed.execution_checklist ?? [],
+    invalidation_rule: parsed.invalidation_rule ?? 'Exit if headline flow and price response diverge materially from the thesis.',
+    what_changes_my_mind: parsed.what_changes_my_mind ?? 'A sharp reversal in news flow or failure to hold the stated setup zone invalidates the bias.',
+    hedge_plan: parsed.hedge_plan ?? 'Reduce size or avoid fresh entry if volatility expands against the position.',
+    liquidity_note: parsed.liquidity_note ?? 'Prefer liquid weekly strikes with tight spreads and avoid chasing illiquid OTM options.',
+    event_watchlist: parsed.event_watchlist ?? [],
     analytics: parsed.analytics ?? {
       momentum: 50,
       volatility: 50,
@@ -328,6 +354,17 @@ function buildFallbackSignal(symbol: string, news: NewsItem[], sector: string): 
     event_risk: { has_event: false, event: '', date: '', impact: '' },
     holding_till: 'Exit before Thursday 3PM expiry',
     position_sizing: 'Max 2% of capital. 1 lot only if high VIX.',
+    thesis_strength: 'WEAK',
+    setup_quality: 'Low-quality fallback setup due to parse failure.',
+    price_structure: 'No reliable price structure extracted from model output.',
+    entry_trigger: 'Wait for a cleaner setup and fresh confirmation before taking risk.',
+    confirmation_signals: [],
+    execution_checklist: [],
+    invalidation_rule: 'Do not trade if the fallback view is the only basis for entry.',
+    what_changes_my_mind: 'A fresh structured AI output with aligned sentiment and clear catalysts.',
+    hedge_plan: 'Stay small or stay flat until a better-quality setup forms.',
+    liquidity_note: 'Only consider liquid contracts if re-entering after confirmation.',
+    event_watchlist: [],
     summary: 'AI fallback returned a conservative neutral signal due to parse failure.',
     one_liner: 'Neutral F&O view due to insufficient structured output from the AI model.',
     disclaimer: 'AI-generated. Not SEBI advice. F&O carries unlimited loss risk.',

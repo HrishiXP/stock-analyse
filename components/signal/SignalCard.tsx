@@ -63,6 +63,7 @@ export function SignalCard({ signal }: { signal: FOSignal }) {
           ['Max Loss %', `${signal.max_loss_percent}%`],
           ['Option Type', signal.option_type],
           ['Conviction', signal.conviction],
+          ['Thesis', signal.thesis_strength ?? 'N/A'],
           ['VIX', signal.india_vix_view],
           ['Regime', signal.market_regime],
           ['PoS', `${signal.probability_of_success ?? 0}%`],
@@ -112,6 +113,70 @@ export function SignalCard({ signal }: { signal: FOSignal }) {
         <p className="mt-2 text-slate-400">{signal.position_sizing}</p>
         <div className="mt-4 text-sm font-semibold">Holding guidance</div>
         <p className="mt-2 text-slate-400">{signal.holding_till}</p>
+      </div>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-200">
+          <div className="text-sm font-semibold text-slate-100">Execution Framework</div>
+          <div className="mt-4 space-y-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Setup Quality</div>
+              <p className="mt-1 text-sm text-slate-300">{signal.setup_quality ?? 'N/A'}</p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Price Structure</div>
+              <p className="mt-1 text-sm text-slate-300">{signal.price_structure ?? 'N/A'}</p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Entry Trigger</div>
+              <p className="mt-1 text-sm text-slate-300">{signal.entry_trigger ?? 'N/A'}</p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Invalidation</div>
+              <p className="mt-1 text-sm text-rose-300">{signal.invalidation_rule ?? 'N/A'}</p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">What Changes My Mind</div>
+              <p className="mt-1 text-sm text-amber-300">{signal.what_changes_my_mind ?? 'N/A'}</p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Liquidity Note</div>
+              <p className="mt-1 text-sm text-slate-300">{signal.liquidity_note ?? 'N/A'}</p>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Hedge Plan</div>
+              <p className="mt-1 text-sm text-slate-300">{signal.hedge_plan ?? 'N/A'}</p>
+            </div>
+          </div>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-200">
+          <div className="text-sm font-semibold text-slate-100">Checklist And Watchlist</div>
+          <div className="mt-4 grid gap-4">
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Confirmation Signals</div>
+              <div className="mt-2 space-y-2">
+                {(signal.confirmation_signals?.length ? signal.confirmation_signals : ['No confirmation signals provided.']).map((item, index) => (
+                  <div key={`${item}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300">{item}</div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Execution Checklist</div>
+              <div className="mt-2 space-y-2">
+                {(signal.execution_checklist?.length ? signal.execution_checklist : ['No execution checklist provided.']).map((item, index) => (
+                  <div key={`${item}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300">{item}</div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Event Watchlist</div>
+              <div className="mt-2 space-y-2">
+                {(signal.event_watchlist?.length ? signal.event_watchlist : ['No event watchlist items provided.']).map((item, index) => (
+                  <div key={`${item}-${index}`} className="rounded-2xl border border-slate-800 bg-slate-900 px-3 py-2 text-sm text-slate-300">{item}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <p className="mt-4 text-xs text-slate-500">{signal.disclaimer}</p>
     </section>

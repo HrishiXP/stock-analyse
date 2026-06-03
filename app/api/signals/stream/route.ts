@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { aggregateNews } from '../../../../lib/newsAggregator';
-import { generateStreamingSignal, postProcessParsedSignal } from '../../../../lib/gemini';
+import { generateFOSignal, generateStreamingSignal, postProcessParsedSignal } from '../../../../lib/gemini';
 import { checkRateLimit } from '../../../../lib/rateLimit';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 function encodeEvent(event: object) {
   return `data: ${JSON.stringify(event)}\n\n`;
@@ -108,7 +112,7 @@ export async function GET(req: Request) {
 
             // consume generator with overall timeout to avoid indefinite hang
             const gen = generateStreamingSignal(symbol, news);
-            const overallTimeout = 45000; // 45s to complete an attempt
+            const overallTimeout = 55000; // keep within route maxDuration with room for cleanup/fallback
             await Promise.race([
               (async () => {
                 try {
@@ -150,12 +154,23 @@ export async function GET(req: Request) {
         }
 
         if (!success) {
-          console.error('[SSE] all attempts failed for', symbol, lastErr);
-          const isDev = process.env.NODE_ENV !== 'production';
-          safeEnqueue(encoder.encode(encodeEvent({ 
-            type: 'error', 
-            message: isDev ? String(lastErr || 'Unknown streaming error') : 'Streaming analysis interrupted' 
-          })));
+          console.error('[SSE] all attempts failed for', symbol, lastErr, 'falling back to non-stream analysis');
+          try {
+            const fallbackSignal = await generateFOSignal(symbol, news);
+            safeEnqueue(encoder.encode(encodeEvent({
+              type: 'token',
+              content: '\nLive stream degraded. Finalizing with non-stream analysis...\n',
+            })));
+            safeEnqueue(encoder.encode(encodeEvent({ type: 'done', signal: fallbackSignal, fallback: true })));
+            success = true;
+          } catch (fallbackError) {
+            console.error('[SSE] fallback analysis failed for', symbol, fallbackError);
+            const isDev = process.env.NODE_ENV !== 'production';
+            safeEnqueue(encoder.encode(encodeEvent({ 
+              type: 'error', 
+              message: isDev ? String(fallbackError || lastErr || 'Unknown streaming error') : 'Streaming analysis interrupted' 
+            })));
+          }
         }
       } catch (error) {
         console.error('[SSE] unexpected error in stream handler', String(error));
@@ -173,8 +188,9 @@ export async function GET(req: Request) {
   return new Response(stream, {
     headers: {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     },
   });
 }

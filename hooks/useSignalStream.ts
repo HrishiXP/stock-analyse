@@ -29,7 +29,29 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
   const esRef = useRef<EventSource | null>(null);
   const attemptsRef = useRef(0);
   const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastActivityRef = useRef<number>(Date.now());
+  const completedRef = useRef(false);
+  const intentionalCloseRef = useRef(false);
+
+  const clearTimers = () => {
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current as any);
+      idleTimerRef.current = null;
+    }
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current as any);
+      reconnectTimerRef.current = null;
+    }
+  };
+
+  const closeCurrentStream = () => {
+    intentionalCloseRef.current = true;
+    try {
+      esRef.current?.close();
+    } catch {}
+    esRef.current = null;
+  };
 
   const resetIdle = () => {
     lastActivityRef.current = Date.now();
@@ -45,6 +67,8 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
 
   const start = (selectedSymbol: string, refresh = false) => {
     if (!selectedSymbol) return;
+    clearTimers();
+    closeCurrentStream();
     // reset state
     setStreamingText('');
     setSignal(null);
@@ -53,10 +77,13 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
     setIsStreaming(true);
     setConnectionState('connecting');
     attemptsRef.current = 0;
+    completedRef.current = false;
+    intentionalCloseRef.current = false;
 
     const connect = () => {
       attemptsRef.current += 1;
       setConnectionState('connecting');
+      intentionalCloseRef.current = false;
       const url = `/api/signals/stream?symbol=${encodeURIComponent(selectedSymbol)}&refresh=${refresh ? 'true' : 'false'}`;
       try {
         esRef.current = new EventSource(url);
@@ -71,6 +98,8 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
 
       currentEs.onopen = () => {
         setConnectionState('connected');
+        setIsStreaming(true);
+        setError(null);
         resetIdle();
       };
 
@@ -87,6 +116,8 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
           if (payload.type === 'done') {
             setIsStreaming(false);
             setConnectionState('closed');
+            completedRef.current = true;
+            clearTimers();
             try {
               const parsed = payload.signal as FOSignal;
               setSignal(parsed);
@@ -94,17 +125,15 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
             } catch {
               setError('Unable to parse final signal.');
             }
-            try {
-              currentEs.close();
-            } catch {}
+            closeCurrentStream();
           }
           if (payload.type === 'error') {
+            completedRef.current = true;
             setError(payload.message);
             setIsStreaming(false);
             setConnectionState('failed');
-            try {
-              currentEs.close();
-            } catch {}
+            clearTimers();
+            closeCurrentStream();
           }
         } catch {
           // Non-JSON token, append raw
@@ -113,19 +142,25 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
       };
 
       currentEs.onerror = () => {
-        // treat as disconnect
-        try {
-          currentEs.close();
-        } catch {}
+        if (completedRef.current || intentionalCloseRef.current || currentEs.readyState === EventSource.CLOSED) {
+          clearTimers();
+          setIsStreaming(false);
+          setConnectionState('closed');
+          return;
+        }
+
+        closeCurrentStream();
         const shouldRetry = attemptsRef.current < 5;
-        setIsStreaming(false);
+        setIsStreaming(shouldRetry);
         setConnectionState(shouldRetry ? 'connecting' : 'failed');
         setError(shouldRetry ? null : 'Signal stream disconnected.');
         if (shouldRetry) {
           const backoff = Math.min(16000, 1000 * Math.pow(2, attemptsRef.current - 1));
-          setTimeout(() => {
+          reconnectTimerRef.current = setTimeout(() => {
             connect();
           }, backoff);
+        } else {
+          clearTimers();
         }
       };
 
@@ -133,16 +168,20 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
       resetIdle();
       idleTimerRef.current = setTimeout(function checkIdle() {
         const idle = Date.now() - lastActivityRef.current;
+        if (completedRef.current || intentionalCloseRef.current) {
+          clearTimers();
+          return;
+        }
         if (idle > 30000) {
-          try {
-            esRef.current?.close();
-          } catch {}
+          closeCurrentStream();
           setConnectionState('connecting');
           if (attemptsRef.current < 5) {
             const backoff = Math.min(16000, 1000 * Math.pow(2, attemptsRef.current - 1));
-            setTimeout(() => connect(), backoff);
+            reconnectTimerRef.current = setTimeout(() => connect(), backoff);
           } else {
             setConnectionState('failed');
+            setIsStreaming(false);
+            clearTimers();
             setError('Stream idle for too long; connection closed.');
           }
         } else {
@@ -157,20 +196,18 @@ export function useSignalStream(symbol: string | null): SignalStreamState {
   const stop = () => {
     setIsStreaming(false);
     setConnectionState('closed');
-    try {
-      esRef.current?.close();
-    } catch {}
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current as any);
+    completedRef.current = true;
+    clearTimers();
+    closeCurrentStream();
   };
 
   useEffect(() => {
     return () => {
       setIsStreaming(false);
       setConnectionState('closed');
-      try {
-        esRef.current?.close();
-      } catch {}
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current as any);
+      completedRef.current = true;
+      clearTimers();
+      closeCurrentStream();
     };
   }, []);
 
