@@ -25,13 +25,13 @@ export default function LoginPage() {
 
       if (result?.error) {
         setError('Invalid credentials for NSE-FO-Radar access.');
+        setLoading(false);
       } else {
-        router.push('/dashboard');
-        router.refresh();
+        // Use hard redirect for production reliability
+        window.location.href = '/dashboard';
       }
     } catch (err) {
       setError('An authentication error occurred.');
-    } finally {
       setLoading(false);
     }
   };
