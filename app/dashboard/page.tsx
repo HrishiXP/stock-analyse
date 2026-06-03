@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import { Navbar } from '../../components/layout/Navbar';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { MarketClock } from '../../components/market/MarketClock';
@@ -18,7 +20,16 @@ import { FNO_SYMBOLS } from '../../lib/nseSymbols';
 const disclaimerText = `RISK WARNING: NSE-FO-Radar generates AI-powered analysis from publicly available news for EDUCATIONAL AND RESEARCH PURPOSES ONLY. This is NOT SEBI-registered investment advice. F&O derivatives carry unlimited loss risk and are unsuitable for most retail investors. AI analysis can be wrong. News-based signals do not account for price action, order flow, or insider information. The developers are not liable for trading losses. Always consult a SEBI-registered Research Analyst before trading F&O.`;
 
 export default function DashboardPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [selectedSymbol, setSelectedSymbol] = useState('NIFTY');
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
@@ -29,6 +40,19 @@ export default function DashboardPage() {
     currentSignal: state.currentSignal,
     setSelectedSymbol: state.setSelectedSymbol,
   }));
+
+  if (status === 'loading') {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-slate-950 text-emerald-500">
+        <div className="flex flex-col items-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-emerald-500/20 border-t-emerald-500"></div>
+          <span className="text-sm font-medium uppercase tracking-[0.2em]">Authenticating Terminal...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) return null;
 
   useEffect(() => {
     if (!sessionStorage.getItem('risk_ack')) {
