@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import useSWR from 'swr';
 import { NewsCard } from './NewsCard';
 import { SentimentBar } from './SentimentBar';
+import { NewsVolumeChart } from '../charts/NewsVolumeChart';
 import { useAppStore } from '../../store/appStore';
 
 const fetcher = (url: string) => fetch(url).then((res) => res.json());
@@ -28,6 +29,9 @@ export function NewsWall({ symbol }: { symbol: string }) {
         </div>
         <div className="mt-5">
           <SentimentBar news={news} />
+        </div>
+        <div className="mt-4">
+          <NewsVolumeChart news={news} />
         </div>
       </div>
       <div className="grid gap-4">

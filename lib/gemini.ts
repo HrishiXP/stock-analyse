@@ -1,3 +1,4 @@
+import 'server-only';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { FOSignal, MarketMood, NewsItem, QuickSignal } from '../types/signal';
 import { getSentimentLabel, keywordSentiment } from './sentimentEngine';
@@ -45,23 +46,48 @@ function buildSignalPrompt(symbol: string, sector: string, marketStatus: string,
   "conviction": "HIGH|MEDIUM|LOW",
   "timeframe": "string",
   "rationale_summary": "string",
+  "one_liner": "string",
   "entry_range": { "min": "number", "max": "number" },
-  "targets": [ "number", "number", "number" ],
+  "target_1": "number",
+  "target_2": "number",
+  "target_3": "number",
   "stop_loss": "number",
+  "trailing_sl": "number",
   "risk_reward_ratio": "string",
+  "max_loss_percent": "number",
   "suggested_strike": "string",
   "expiry": "string",
   "option_type": "string",
-  "greeks": { "delta": "string", "gamma": "string", "theta": "string", "vega": "string" },
+  "lot_size_note": "string",
+  "margin_estimate": "string",
   "key_catalysts": [ { "factor": "string", "impact": "string", "direction": "string" } ],
   "risk_scenarios": [ { "scenario": "string", "probability": "string", "signal_impact": "string" } ],
   "india_vix_forecast": "string",
+  "india_vix_view": "string",
+  "india_vix_sensitivity": "string",
+  "pcr_view": "string",
+  "technical_context": "string",
+  "global_cues": "string",
+  "fii_dii_bias": "string",
+  "sector_momentum": "string",
+  "news_impact": "string",
+  "news_quality_score": "number (0-1)",
   "market_regime": "string",
   "fii_dii_flow_estimate": "BULLISH|BEARISH|NEUTRAL",
   "expected_volatility_range": "string",
   "probability_of_success": "number (0-100)",
+  "analytics": {
+    "momentum": "number (0-100)",
+    "volatility": "number (0-100)",
+    "liquidity": "number (0-100)",
+    "trend": "number (0-100)",
+    "event_risk": "number (0-100)",
+    "macro": "number (0-100)"
+  },
   "holding_till": "string",
-  "position_sizing_rule": "string",
+  "position_sizing": "string",
+  "strategy_rationale": "Explain why a spread or direct buy was chosen (e.g., 'Selling hedge to offset theta')",
+  "direct_buy_alternative": "The single most important CALL or PUT to buy if the user wants to avoid multi-legs/selling.",
   "notes": []
 }`;
 
@@ -70,12 +96,16 @@ function buildSignalPrompt(symbol: string, sector: string, marketStatus: string,
 2. Estimate India VIX impact (High VIX favors selling/spreads).
 3. Identify 3 Key Catalysts (e.g., Earnings, FII flow, Support breakout).
 4. Provide 3 Risk Scenarios (e.g., Global sell-off, Gap down).
-5. Suggest an optimal Multi-leg strategy if appropriate.
+5. Suggest an optimal Multi-leg strategy if appropriate, but ALWAYS include a "Direct Plan" for pure option buyers.
+6. Favor directional momentum (BUY_CALL/BUY_PUT) as the primary recommendation for strong trends, as the user prefers direct Buying over Selling/Spreads.
+7. Explain clearly in "strategy_rationale" why a certain strike/type was chosen.
+8. ALWAYS specify the exact Strike Price with suffix (e.g., '24000 CE' or '23800 PE') in "suggested_strike".
+9. If suggesting a spread, ensure the "direct_buy_alternative" contains only the primary LONG leg (e.g., 'Buy 24000 CE').
 Return STRICT JSON. No markdown. No headers.`;
 }
 
 export async function batchFlashSentiment(items: NewsItem[]) {
-  const model = getModel('gemini-3.5-flash');
+  const model = getModel('gemini-1.5-flash');
   const batches: NewsItem[][] = [];
   for (let i = 0; i < items.length; i += 10) {
     batches.push(items.slice(i, i + 10));
@@ -96,7 +126,7 @@ export async function batchFlashSentiment(items: NewsItem[]) {
 }
 
 export async function generateMarketMoodSummary(allNews: NewsItem[]): Promise<MarketMood> {
-  const model = getModel('gemini-3.5-flash');
+  const model = getModel('gemini-1.5-flash');
   const text = allNews.slice(0, 20).map((item) => `${item.sourceShort}: ${item.title}`).join('\n');
   const prompt = `Summarize the overall market mood for India F&O from these headlines in one sentence. Return JSON only: {"overall":"VERY_BULLISH|BULLISH|NEUTRAL|BEARISH|VERY_BEARISH","score":number,"summary":"string","top_drivers":["..."],"news_count":number}\n${text}`;
   const response = await model.generateContent(prompt);
@@ -122,7 +152,7 @@ export async function generateFOSignal(symbol: string, news: NewsItem[]): Promis
   const marketStatus = 'UNKNOWN';
   const day = new Date().toLocaleDateString('en-US', { weekday: 'long', timeZone: 'Asia/Kolkata' });
   const prompt = buildSignalPrompt(symbol, sector, marketStatus, day, news, metadata.lotSize);
-  const model = getModel('gemini-2.5-pro');
+  const model = getModel('gemini-1.5-pro');
   const response = await model.generateContent(`${SYSTEM_PREFIX}\n\n${prompt}`);
   const raw = response.response.text();
   // robust parse and post-processing
@@ -213,12 +243,20 @@ export function postProcessParsedSignal(parsed: any, symbol: string, news: NewsI
     event_risk: parsed.event_risk ?? { has_event: false, event: '', date: '', impact: '' },
     holding_till: parsed.holding_till ?? 'Next major expiry or trend reversal.',
     position_sizing: parsed.position_sizing_rule ?? parsed.position_sizing ?? 'Conservative 2-3% risk per lot.',
+    analytics: parsed.analytics ?? {
+      momentum: 50,
+      volatility: 50,
+      liquidity: 50,
+      trend: 50,
+      event_risk: 50,
+      macro: 50,
+    },
     summary: parsed.rationale_summary ?? parsed.summary ?? '',
     one_liner: parsed.one_liner ?? '',
     disclaimer: 'AI-generated. Internal desk use only. Not SEBI advice.',
     generated_at: now,
     news_count_used: news.length,
-    model_used: 'gemini-2.5-pro-advanced',
+    model_used: 'gemini-1.5-pro',
   };
 
   return safe;
@@ -282,7 +320,7 @@ function buildFallbackSignal(symbol: string, news: NewsItem[], sector: string): 
 }
 
 export async function generateBatchQuickSignals(symbols: string[]): Promise<QuickSignal[]> {
-  const model = getModel('gemini-3.5-flash');
+  const model = getModel('gemini-1.5-flash');
   const batches: string[][] = [];
   for (let i = 0; i < symbols.length; i += 9) {
     batches.push(symbols.slice(i, i + 9));

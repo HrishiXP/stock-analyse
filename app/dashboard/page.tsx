@@ -38,11 +38,12 @@ export default function DashboardPage() {
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [quickLoading, setQuickLoading] = useState(false);
   const [quickError, setQuickError] = useState<string | null>(null);
-  const [multiSignal, setMultiSignal] = useState(null as any);
   const { start, streamingText, signal, news, isStreaming, error, connectionState, manualReconnect } = useSignalStream(selectedSymbol);
-  const { finalizeSignal, currentSignal, setSelectedSymbol: setAppSelectedSymbol } = useAppStore((state) => ({
+  const { finalizeSignal, currentSignal, multiSignal, setMultiSignal, setSelectedSymbol: setAppSelectedSymbol } = useAppStore((state) => ({
     finalizeSignal: state.finalizeSignal,
     currentSignal: state.currentSignal,
+    multiSignal: state.multiSignal,
+    setMultiSignal: state.setMultiSignal,
     setSelectedSymbol: state.setSelectedSymbol,
   }));
 
@@ -54,7 +55,16 @@ export default function DashboardPage() {
 
   useEffect(() => {
     setAppSelectedSymbol(selectedSymbol);
-  }, [selectedSymbol, setAppSelectedSymbol]);
+    // Auto-fetch convergence data
+    const fetchConvergence = async () => {
+      try {
+        const res = await fetch(`/api/signals/convergence?symbol=${selectedSymbol}`);
+        const json = await res.json();
+        if (json.success) setMultiSignal(json.data);
+      } catch {}
+    };
+    if (isClient) fetchConvergence();
+  }, [selectedSymbol, setAppSelectedSymbol, isClient, setMultiSignal]);
 
   if (status === 'loading' || !isClient) {
     return (
@@ -125,10 +135,19 @@ export default function DashboardPage() {
             </div>
             <StreamingSignalCard streamingText={streamingText} signal={activeSignal} error={error || quickError} connectionState={connectionState} onReconnect={manualReconnect} />
             {activeSignal ? <SignalCard signal={activeSignal} /> : null}
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/95 p-6">
-              <div className="mb-4 text-xl font-semibold text-slate-100">Signal Convergence</div>
-              <div className="text-slate-400">Scalp, swing, and positional analysis will appear here when available.</div>
-            </div>
+            
+            {multiSignal ? (
+              <MultiTimeframeView data={multiSignal} />
+            ) : (
+              <div className="rounded-3xl border border-slate-800 bg-slate-900/95 p-6 animate-pulse">
+                <div className="mb-4 text-xl font-semibold text-slate-100 italic">Analyzing Multi-Timeframe Convergence...</div>
+                <div className="grid gap-3 md:grid-cols-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-40 rounded-3xl bg-slate-800/50"></div>
+                  ))}
+                </div>
+              </div>
+            )}
           </section>
           <aside className="space-y-6">
             <NewsWall symbol={selectedSymbol} />

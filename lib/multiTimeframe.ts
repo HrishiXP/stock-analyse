@@ -1,3 +1,4 @@
+import 'server-only';
 import { NewsItem, MultiTimeframeSignal, QuickSignal } from '../types/signal';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { FNO_SYMBOLS } from './nseSymbols';

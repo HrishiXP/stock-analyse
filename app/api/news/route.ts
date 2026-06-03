@@ -21,6 +21,12 @@ export async function GET(req: Request) {
     newsCache.set(cacheKey, items, 5 * 60);
     return NextResponse.json({ success: true, data: items, error: null, meta: { cached: false, newsCount: items.length, generatedAt: new Date().toISOString() } });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error), meta: { cached: false, newsCount: 0, generatedAt: new Date().toISOString() } }, { status: 500 });
+    console.error(`[API/News] Error:`, error);
+    const isDev = process.env.NODE_ENV !== 'production';
+    return NextResponse.json({ 
+      success: false, 
+      error: isDev ? String(error) : 'Failed to fetch news', 
+      meta: { cached: false, newsCount: 0, generatedAt: new Date().toISOString() } 
+    }, { status: 500 });
   }
 }

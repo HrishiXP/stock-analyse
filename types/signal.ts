@@ -55,6 +55,16 @@ export interface FOSignal {
   event_risk: { has_event: boolean; event: string; date: string; impact: string };
   holding_till: string;
   position_sizing: string;
+  strategy_rationale?: string;
+  direct_buy_alternative?: string;
+  analytics?: {
+    momentum: number;
+    volatility: number;
+    liquidity: number;
+    trend: number;
+    event_risk: number;
+    macro: number;
+  };
   summary: string;
   one_liner: string;
   disclaimer: string;

@@ -1,3 +1,4 @@
+import 'server-only';
 import { XMLParser } from 'fast-xml-parser';
 import { batchFlashSentiment } from './gemini';
 import { dedupeAndScoreNews } from './newsDedup';

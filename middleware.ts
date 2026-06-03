@@ -16,5 +16,13 @@ export const config = {
     '/api/scan/:path*',
     '/api/news/:path*',
     '/api/mood/:path*',
+    '/dashboard',
+    '/scanner',
+    '/news',
+    '/api/signals',
+    '/api/scan',
+    '/api/news',
+    '/api/mood',
   ],
 };
+

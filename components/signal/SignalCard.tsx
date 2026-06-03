@@ -1,6 +1,7 @@
 'use client';
 import { FOSignal } from '../../types/signal';
 import { ConfidenceGauge } from '../charts/ConfidenceGauge';
+import { SignalRadarChart } from '../charts/SignalRadarChart';
 import { GreeksPanel } from './GreeksPanel';
 import { CatalystsTimeline } from './CatalystsTimeline';
 import { RiskScenariosPanel } from './RiskScenariosPanel';
@@ -11,39 +12,55 @@ export function SignalCard({ signal }: { signal: FOSignal }) {
 
   return (
     <section className="rounded-3xl border border-slate-800 bg-slate-900/95 p-6 shadow-xl shadow-slate-950/20">
-      <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="text-2xl font-semibold text-slate-100">{signal.symbol}</div>
-          <div className="mt-2 inline-flex rounded-full bg-slate-800 px-3 py-1 text-sm uppercase tracking-[0.24em] text-slate-300">{signal.signal}</div>
+      <div className="mb-5 flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex-1">
+          <div className="text-3xl font-bold text-slate-100">{signal.symbol}</div>
+          <div className="mt-2 inline-flex rounded-full bg-slate-800 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.24em] text-emerald-400 border border-emerald-500/20">{signal.signal}</div>
+          <blockquote className="mt-4 rounded-3xl border border-slate-800 bg-slate-950 px-5 py-4 italic text-slate-200 leading-relaxed shadow-inner">
+            {signal.one_liner || 'No signal summary available.'}
+          </blockquote>
         </div>
-        <ConfidenceGauge value={signal.confidence} />
+        <div className="flex flex-col gap-4 sm:flex-row lg:flex-col">
+          <ConfidenceGauge value={signal.confidence} />
+          {signal.analytics && <SignalRadarChart data={signal.analytics} />}
+        </div>
       </div>
-      <blockquote className="rounded-3xl border border-slate-800 bg-slate-950 px-5 py-4 italic text-slate-200">
-        {signal.one_liner || 'No signal summary available.'}
-      </blockquote>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Entry</div>
-          <div className="mt-2 text-lg font-semibold text-slate-100">{formatNumber(entryRange.min)} - {formatNumber(entryRange.max)}</div>
-        </div>
-        <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Targets</div>
-          <div className="mt-2 space-y-1 text-slate-100">
-            <div>{formatNumber(signal.target_1)}</div>
-            <div>{formatNumber(signal.target_2)}</div>
-            <div>{formatNumber(signal.target_3)}</div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-950 p-6 flex flex-col justify-center items-center text-center">
+          <div className="text-xs uppercase tracking-[0.2em] text-slate-500 mb-2">Primary Strike</div>
+          <div className={`text-4xl font-black tracking-tighter ${signal.signal.includes('CALL') ? 'text-emerald-400' : signal.signal.includes('PUT') ? 'text-rose-400' : 'text-blue-400'}`}>
+            {signal.suggested_strike}
           </div>
+          <div className="mt-2 text-xs font-mono text-slate-500 uppercase">{signal.option_type} • {signal.expiry}</div>
         </div>
         <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4">
-          <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Stop Loss</div>
-          <div className="mt-2 text-lg font-semibold text-slate-100">{formatNumber(signal.stop_loss)}</div>
-          <div className="mt-2 text-slate-400">R:R {signal.risk_reward_ratio ?? 'N/A'}</div>
+          <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Entry Range</div>
+          <div className="mt-2 text-lg font-semibold text-slate-100">{formatNumber(entryRange.min)} - {formatNumber(entryRange.max)}</div>
+          <div className="mt-4 text-xs uppercase tracking-[0.2em] text-slate-400">Stop Loss</div>
+          <div className="mt-1 text-lg font-semibold text-rose-400">{formatNumber(signal.stop_loss)}</div>
+        </div>
+        <div className="rounded-3xl border border-slate-800 bg-slate-950 p-4">
+          <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Profit Targets</div>
+          <div className="mt-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">T1</span>
+              <span className="text-lg font-bold text-slate-100">{formatNumber(signal.target_1)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">T2</span>
+              <span className="text-lg font-bold text-slate-100">{formatNumber(signal.target_2)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded border border-emerald-500/20">T3</span>
+              <span className="text-lg font-bold text-slate-100">{formatNumber(signal.target_3)}</span>
+            </div>
+          </div>
         </div>
       </div>
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
-          ['Strike', signal.suggested_strike],
-          ['Expiry', signal.expiry],
+          ['Risk:Reward', signal.risk_reward_ratio],
+          ['Max Loss %', `${signal.max_loss_percent}%`],
           ['Option Type', signal.option_type],
           ['Conviction', signal.conviction],
           ['VIX', signal.india_vix_view],
@@ -74,6 +91,23 @@ export function SignalCard({ signal }: { signal: FOSignal }) {
         <RiskScenariosPanel scenarios={(signal.risk_scenarios ?? []).slice(0, 3)} />
       </div>
       <div className="mt-6 rounded-3xl border border-slate-800 bg-slate-950 p-4 text-slate-200">
+        {signal.strategy_rationale && (
+          <div className="mb-4">
+            <div className="text-sm font-semibold text-emerald-400 font-mono uppercase tracking-wider">Strategy Rationale</div>
+            <p className="mt-2 text-slate-400 leading-relaxed">{signal.strategy_rationale}</p>
+          </div>
+        )}
+        {signal.direct_buy_alternative && (
+          <div className="mb-4 rounded-2xl border border-blue-500/30 bg-blue-500/10 p-4 shadow-lg shadow-blue-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em]">Naked Buy Suggestion</div>
+                <div className="mt-1 text-2xl font-black text-blue-50 text-shadow-sm font-mono">{signal.direct_buy_alternative}</div>
+              </div>
+              <div className="rounded-full bg-blue-500/20 px-3 py-1 text-[10px] font-bold text-blue-400 border border-blue-500/30 uppercase">DIRECT ENTRY</div>
+            </div>
+          </div>
+        )}
         <div className="text-sm font-semibold">Position sizing</div>
         <p className="mt-2 text-slate-400">{signal.position_sizing}</p>
         <div className="mt-4 text-sm font-semibold">Holding guidance</div>

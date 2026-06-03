@@ -1,3 +1,4 @@
+import 'server-only';
 import { NextAuthOptions } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 
@@ -15,8 +16,8 @@ export const authOptions: NextAuthOptions = {
         const systemUser = process.env.AUTH_USERNAME?.trim();
         const systemPass = process.env.AUTH_PASSWORD?.trim();
 
-        if (!systemUser || !systemPass) {
-          console.error('CRITICAL: AUTH_USERNAME or AUTH_PASSWORD not set in environment variables');
+        if (!systemUser || !systemPass || !process.env.NEXTAUTH_SECRET) {
+          console.error('CRITICAL: AUTH_USERNAME, AUTH_PASSWORD or NEXTAUTH_SECRET not set in environment variables');
           return null;
         }
 
@@ -57,5 +58,5 @@ export const authOptions: NextAuthOptions = {
   },
   secret: process.env.NEXTAUTH_SECRET,
   useSecureCookies: process.env.NODE_ENV === 'production',
-  debug: true, // Enable debug logs in terminal/vercel logs
+  debug: process.env.NODE_ENV !== 'production',
 };

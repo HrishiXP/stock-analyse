@@ -151,11 +151,19 @@ export async function GET(req: Request) {
 
         if (!success) {
           console.error('[SSE] all attempts failed for', symbol, lastErr);
-          safeEnqueue(encoder.encode(encodeEvent({ type: 'error', message: String(lastErr || 'Unknown streaming error') })));
+          const isDev = process.env.NODE_ENV !== 'production';
+          safeEnqueue(encoder.encode(encodeEvent({ 
+            type: 'error', 
+            message: isDev ? String(lastErr || 'Unknown streaming error') : 'Streaming analysis interrupted' 
+          })));
         }
       } catch (error) {
         console.error('[SSE] unexpected error in stream handler', String(error));
-        safeEnqueue(encoder.encode(encodeEvent({ type: 'error', message: String(error) })));
+        const isDev = process.env.NODE_ENV !== 'production';
+        safeEnqueue(encoder.encode(encodeEvent({ 
+          type: 'error', 
+          message: isDev ? String(error) : 'Internal stream error' 
+        })));
       }
       clearInterval(heartbeat);
       controller.close();

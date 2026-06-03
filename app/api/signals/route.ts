@@ -23,6 +23,12 @@ export async function POST(req: Request) {
     signalCache.set(cacheKey, signal, 20 * 60);
     return NextResponse.json({ success: true, data: signal, error: null, meta: { cached: false, newsCount: news.length, generatedAt: new Date().toISOString() } });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error), meta: { cached: false, generatedAt: new Date().toISOString() } }, { status: 500 });
+    console.error(`[API/Signals] Error:`, error);
+    const isDev = process.env.NODE_ENV !== 'production';
+    return NextResponse.json({ 
+      success: false, 
+      error: isDev ? String(error) : 'Internal Server Error during analysis', 
+      meta: { cached: false, generatedAt: new Date().toISOString() } 
+    }, { status: 500 });
   }
 }

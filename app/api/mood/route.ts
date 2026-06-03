@@ -15,6 +15,12 @@ export async function GET() {
     newsCache.set(cacheKey, mood, 5 * 60);
     return NextResponse.json({ success: true, data: mood, error: null, meta: { cached: false, generatedAt: new Date().toISOString() } });
   } catch (error) {
-    return NextResponse.json({ success: false, error: String(error), meta: { cached: false, generatedAt: new Date().toISOString() } }, { status: 500 });
+    console.error(`[API/Mood] Error:`, error);
+    const isDev = process.env.NODE_ENV !== 'production';
+    return NextResponse.json({ 
+      success: false, 
+      error: isDev ? String(error) : 'Failed to generate market mood', 
+      meta: { cached: false, generatedAt: new Date().toISOString() } 
+    }, { status: 500 });
   }
 }

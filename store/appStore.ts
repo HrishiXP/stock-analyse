@@ -1,8 +1,9 @@
 import { create } from 'zustand';
-import { FOSignal, MarketMood, NewsItem, QuickSignal } from '../types/signal';
+import { FOSignal, MarketMood, MultiTimeframeSignal, NewsItem, QuickSignal } from '../types/signal';
 
 interface AppState {
   currentSignal: FOSignal | null;
+  multiSignal: MultiTimeframeSignal | null;
   streamingText: string;
   isStreaming: boolean;
   signals: Record<string, FOSignal>;
@@ -15,6 +16,7 @@ interface AppState {
   error: string | null;
   setStreamingText: (chunk: string) => void;
   finalizeSignal: (signal: FOSignal) => void;
+  setMultiSignal: (signal: MultiTimeframeSignal | null) => void;
   addToWatchlist: (symbol: string) => void;
   removeFromWatchlist: (symbol: string) => void;
   setScanResults: (results: QuickSignal[]) => void;
@@ -28,6 +30,7 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   currentSignal: null,
+  multiSignal: null,
   streamingText: '',
   isStreaming: false,
   signals: {},
@@ -40,6 +43,7 @@ export const useAppStore = create<AppState>((set) => ({
   error: null,
   setStreamingText: (chunk) => set((state) => ({ streamingText: state.streamingText + chunk })),
   finalizeSignal: (signal) => set((state) => ({ currentSignal: signal, signals: { ...state.signals, [signal.symbol]: signal }, isStreaming: false })),
+  setMultiSignal: (signal) => set({ multiSignal: signal }),
   addToWatchlist: (symbol) => set((state) => ({ watchlist: Array.from(new Set([...state.watchlist, symbol])) })),
   removeFromWatchlist: (symbol) => set((state) => ({ watchlist: state.watchlist.filter((item) => item !== symbol) })),
   setScanResults: (results) => set({ scanResults: results }),
@@ -48,5 +52,5 @@ export const useAppStore = create<AppState>((set) => ({
   setCurrentNews: (news) => set({ currentNews: news }),
   setLoadingNews: (loading) => set({ isLoadingNews: loading }),
   setError: (error) => set({ error }),
-  clearSignal: () => set({ currentSignal: null, streamingText: '', error: null }),
+  clearSignal: () => set({ currentSignal: null, multiSignal: null, streamingText: '', error: null }),
 }));
