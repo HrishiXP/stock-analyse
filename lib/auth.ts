@@ -12,11 +12,11 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.username || !credentials?.password) return null;
 
-        const systemUser = process.env.AUTH_USERNAME;
-        const systemPass = process.env.AUTH_PASSWORD;
+        const systemUser = process.env.AUTH_USERNAME?.trim();
+        const systemPass = process.env.AUTH_PASSWORD?.trim();
 
         if (
-          credentials.username === systemUser &&
+          credentials.username.trim() === systemUser &&
           credentials.password === systemPass
         ) {
           return {
