@@ -1,7 +1,6 @@
 import { withAuth } from 'next-auth/middleware';
 
 export default withAuth({
-  secret: process.env.NEXTAUTH_SECRET,
   pages: {
     signIn: '/login',
   },
@@ -10,9 +9,9 @@ export default withAuth({
 export const config = {
   matcher: [
     '/dashboard/:path*',
+    '/scanner/:path*',
     '/analysis/:path*',
     '/news/:path*',
-    '/scanner/:path*',
     '/api/signals/:path*',
     '/api/scan/:path*',
     '/api/news/:path*',
